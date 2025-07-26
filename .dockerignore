@@ -1,0 +1,23 @@
+# orders‑ms/.dockerignore
+
+# dependencias locales
+node_modules
+npm-debug.log
+
+# código compilado / distribuciones
+dist
+build
+
+# config de editor / VCS
+.git
+.vscode
+.idea
+
+# bases de datos y datos pesados
+postgres
+postgres-data
+*.db
+
+# ficheros de entorno / logs
+.env
+*.log

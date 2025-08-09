@@ -192,16 +192,21 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
         paidAt: new Date(),
         stripeChargeId: paidOrderDto.stripePaymentId,
 
-
         OrderReceipt: {
-          create: {
-            receiptUrl: paidOrderDto.receiptUrl
+          upsert: {
+            update: {
+              receiptUrl: paidOrderDto.receiptUrl,
+            },
+            create: {
+              receiptUrl: paidOrderDto.receiptUrl,
+            }
           }
         }
       }
     });
 
     return order;
+
 
   }
 

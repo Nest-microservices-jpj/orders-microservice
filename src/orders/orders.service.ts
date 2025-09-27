@@ -1,11 +1,19 @@
-import { HttpStatus, Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
-
-import { PrismaClient } from 'generated/prisma';
+import {
+  HttpStatus,
+  Inject,
+  Injectable,
+  Logger,
+  OnModuleInit,
+} from '@nestjs/common';
+import { CreateOrderDto } from './dto/create-order.dto';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
-
-import { ChangeOrderStatusDto, CreateOrderDto, OrderPaginationDto } from './dto';
+import { OrderPaginationDto } from './dto/order-pagination.dto';
+import { ChangeOrderStatusDto } from './dto';
 import { NATS_SERVICE } from 'src/config';
 import { firstValueFrom } from 'rxjs';
+import { OrderWithProducts } from 'src/interfaces/order-with-products.interface';
+import { PaidOrderDto } from './dto/paid-order.dto';
+import { PrismaClient } from 'generated/prisma';
 
 
 @Injectable()
@@ -153,5 +161,53 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
       data: {status},
     });
   }
-}
 
+  async createPaymentSession(order: OrderWithProducts) {
+
+    const paymentSession = await firstValueFrom(
+      this.client.send('create.payment.session', {
+        orderId: order.id,
+        currency: 'brl',
+        items: order.OrderItem.map( item => ({
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+        }) ),
+      }),
+    );
+
+    return paymentSession;
+  }
+
+  async paidOrder( paidOrderDto: PaidOrderDto ) {
+
+    this.logger.log('Order Paid');
+    this.logger.log(paidOrderDto);
+
+    const order = await this.order.update({
+      where: { id: paidOrderDto.orderId },
+      data: {
+        status: 'PAID',
+        paid: true,
+        paidAt: new Date(),
+        stripeChargeId: paidOrderDto.stripePaymentId,
+
+        OrderReceipt: {
+          upsert: {
+            update: {
+              receiptUrl: paidOrderDto.receiptUrl,
+            },
+            create: {
+              receiptUrl: paidOrderDto.receiptUrl,
+            }
+          }
+        }
+      }
+    });
+
+    return order;
+
+
+  }
+
+}
